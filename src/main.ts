@@ -25,6 +25,8 @@ import { CATEGORY_LABELS, STATUS_LABELS, defaultProperties } from './schema';
 import type { Category, NuyeProperties, Status } from './schema';
 import { loadFeatures, saveFeatures, lastSavedAt, clearFeatures } from './storage';
 import { downloadGeoJSON, parseGeoJSONFile } from './geojson';
+import { computeElevationProfile } from './elevation';
+import type { ElevationSample } from './elevation';
 import sampleMissionRaw from './data/sample-mission.geojson?raw';
 import './style.css';
 
@@ -508,6 +510,10 @@ function renderAttributePanel(instance: TerraDraw): void {
   form.appendChild(deleteBtn);
 
   attributePanelEl.appendChild(form);
+
+  if (feature.geometry.type === 'LineString') {
+    attributePanelEl.appendChild(buildElevationSection(feature.geometry.coordinates as [number, number][]));
+  }
 }
 
 function textField(label: string, value: string, onChange: (v: string) => void): HTMLElement {
@@ -554,6 +560,77 @@ function selectField<T extends string>(
   select.addEventListener('change', () => onChange(select.value as T));
   wrap.appendChild(select);
   return wrap;
+}
+
+// ---------------------------------------------------------------------------
+// 簡易標高断面(LineString選択時のみ)
+// ---------------------------------------------------------------------------
+
+function buildElevationSection(coords: [number, number][]): HTMLElement {
+  const section = document.createElement('div');
+  section.className = 'elevation-section';
+
+  const btn = document.createElement('button');
+  btn.textContent = '標高断面を見る';
+  section.appendChild(btn);
+
+  const chart = document.createElement('div');
+  chart.className = 'elevation-chart';
+  section.appendChild(chart);
+
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = '取得中…';
+    try {
+      const samples = await computeElevationProfile(map, coords, TERRAIN_SOURCE.id);
+      renderElevationChart(chart, samples);
+    } catch (err) {
+      chart.innerHTML = `<p class="hint">標高の取得に失敗しました: ${(err as Error).message}</p>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '標高断面を見る';
+    }
+  });
+
+  return section;
+}
+
+function renderElevationChart(container: HTMLElement, samples: ElevationSample[]): void {
+  const valid = samples.filter(
+    (s): s is { distanceM: number; elevationM: number } => s.elevationM !== null
+  );
+  if (!valid.length) {
+    container.innerHTML =
+      '<p class="hint">この区間の標高データを取得できませんでした(地形データの範囲外の可能性があります)。</p>';
+    return;
+  }
+
+  const minEl = Math.min(...valid.map((s) => s.elevationM));
+  const maxEl = Math.max(...valid.map((s) => s.elevationM));
+  const maxDist = samples[samples.length - 1].distanceM;
+  const width = 280;
+  const height = 80;
+  const pad = 4;
+
+  const points = valid
+    .map((s) => {
+      const x = pad + (s.distanceM / maxDist) * (width - pad * 2);
+      const y =
+        maxEl === minEl
+          ? height / 2
+          : height - pad - ((s.elevationM - minEl) / (maxEl - minEl)) * (height - pad * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+
+  container.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="標高断面">
+      <polyline points="${points}" fill="none" stroke="var(--accent)" stroke-width="2" />
+    </svg>
+    <div class="elevation-summary">
+      距離 ${(maxDist / 1000).toFixed(2)} km ・ 標高 ${Math.round(minEl)} 〜 ${Math.round(maxEl)} m
+    </div>
+  `;
 }
 
 // ---------------------------------------------------------------------------

@@ -215,3 +215,17 @@ button.danger:hover { border-color: var(--danger); background: var(--danger-dim)
 
 /* maplibre attribution: keep compact, don't fight it visually */
 .maplibregl-ctrl-attrib { font-size: 11px; }
+
+/* 簡易標高断面 */
+.elevation-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.elevation-chart svg { display: block; background: var(--paper); border-radius: 4px; }
+.elevation-summary {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
