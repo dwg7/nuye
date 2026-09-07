@@ -10,24 +10,30 @@ GitHub Pagesで公開している。
 
 ## 動作確認済みの機能
 
-実際にGitHub Pages上のデプロイで、点・線・面の作成→属性編集→ブラウザ保存→
-ベースマップ切替→(未確認: GeoJSON出力→再読込)の一連を目視確認した。
+実際にGitHub Pages上のデプロイ(`https://dwg7.unopengis.org/nuye/`)で、以下すべてを
+実機確認した(点・線・面の作成→属性編集→一覧クリック選択→GeoJSON出力→GeoJSON
+読込→すべて消去→ブラウザ保存の再読込→ベースマップ切替、を一通り)。
 
 - 地図表示(stars positron、初期中心=札幌駅〜月寒中央の中間点、zoom 12.5)
 - 点・線・面の描画(terra-draw)。描き終わると自動的に選択状態になり、属性パネルが開く
 - 属性編集(名称・カテゴリ・状態・観測者・注記・次の行動・出典)。フィーチャー一覧の
   表示にも反映される
+- フィーチャー一覧からのクリック選択
 - フィーチャーの削除
-- ブラウザ内保存(LocalStorage)、保存時刻の表示
+- ブラウザ内保存(LocalStorage)、保存時刻の表示、ページ再読込後の復元
 - ベースマップ切替(positron⇔bvmap-dark)。切替後もフィーチャーが引き継がれる
   (`TerraDraw`インスタンスをスナップショット付きで作り直す方式、DECISIONS.md D5の
   コメント参照)
+- GeoJSONダウンロード(3件描いて出力→内部ヘルパーフィーチャー混入なしを確認)
+- GeoJSON読込(Point/LineString/Polygonは正しく読み込まれ、未対応形状
+  (MultiPoint等)は正直に警告を出して読み込まないことを確認、DECISIONS.md D8)
+- 「すべて消去」(LocalStorageが`null`になることまで確認)
 
-## 未確認の機能(実装はしたが実機での動作確認が済んでいない)
+## 未確認の機能
 
-- GeoJSONダウンロード・再読込(コードは実装済み、実機クリックでの確認は未実施)
-- 「すべて消去」ボタン
-- フィーチャー一覧からのクリック選択
+- フィーチャーのドラッグ移動・頂点編集(select mode flagsで`draggable`/
+  `coordinates.draggable`等は有効にしてあるが、実機でのドラッグ操作そのものは
+  まだテストしていない)
 
 ## 利用中の外部URL(すべて実際にfetchして確認済み、DECISIONS.md D3参照)
 
@@ -63,13 +69,13 @@ status: planned/unconfirmed/in_progress/confirmed/needs_review/completed
    ことを確認したが、ローカル環境固有の原因(Vite dev serverのワーカー配信の癖と
    推測しているが未確定)は特定しきれていない。今後の動作確認はGitHub Pages上で
    行う運用にした(CLAUDE.md参照)が、開発体験としては改善の余地がある
-2. GlobeControlの`.maplibregl-ctrl-globe-enabled`⇔`.maplibregl-ctrl-globe`の
-   トグル自体は未検証(このプロジェクトではGlobeControlを追加していないため
-   該当なし——say-your-gridの知見と混同しないこと)
-3. GeoJSON出力・再読込・全消去ボタンの実機クリック確認が未実施(上記参照)
-4. テスト領域(札幌駅〜月寒中央)の正確な中心・ズームは、両地点の中間点からの
+2. テスト領域(札幌駅〜月寒中央)の正確な中心・ズームは、両地点の中間点からの
    暫定算出値(`mapSources.ts`のコメント参照)。実際に地図上で見て微調整すべきという
    起動プロンプトの指示に、まだ従い切れていない
+3. 一覧からフィーチャーを選択した直後、直前に選択していた別フィーチャー(面)の
+   編集ハンドルが視覚的に残って見えることがあった(1回だけ実機で観測、再現手順は
+   未確定)。データ自体(属性パネルの内容)は正しく切り替わっていたので実害は
+   無いと見ているが、再現すれば見た目の問題として調べる価値がある
 
 ## 壊れやすい箇所
 
@@ -77,16 +83,19 @@ status: planned/unconfirmed/in_progress/confirmed/needs_review/completed
   (CLAUDE.md・DECISIONS.md D5参照)
 - **`instance.getSnapshot()`を`getDataFeatures()`を経由せず直接使うと、terra-draw内部の
   編集ハンドル(selectionPoint/midPoint)がデータに混入する**(DECISIONS.md D6参照)
+- **外部GeoJSONを`draw.addFeatures()`に渡す前に`prepareForTerraDraw()`を経由しないと、
+  `properties.mode`が無いために全フィーチャーがサイレントに拒否される**
+  (DECISIONS.md D8参照)
 - ベースマップ切替は`TerraDraw`インスタンスを毎回作り直す設計。`map.setStyle()`が
   terra-drawの管理するsource/layerも巻き込んで消すため(say-your-gridのグリッド枠と
   同種の問題)
 
 ## 次に行うべき作業(優先度順)
 
-1. GeoJSON出力・再読込・全消去の実機確認を完了させる
-2. サンプルミッション(札幌駅〜月寒中央の模擬調査経路・観測地点・区域)を追加する
+1. サンプルミッション(札幌駅〜月寒中央の模擬調査経路・観測地点・区域)を追加する
    (Phase 3)
-3. 地形統合(`mapterhorn-japan-bridge`、Phase 4)——URLは確認済みなので着手障壁は無い
+2. 地形統合(`mapterhorn-japan-bridge`、Phase 4)——URLは確認済みなので着手障壁は無い
+3. テスト領域の中心・ズームを実際に地図で見て微調整する
 
 ## Where to look
 

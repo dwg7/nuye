@@ -213,3 +213,48 @@ nuyeが作るフィーチャーは必ず`schema.ts`の`defaultProperties()`で`i
 以降、nuyeの公開URLは**`https://dwg7.unopengis.org/nuye/`**として文書に記載する
 (README.md等)。`dwg7.github.io/nuye/`も引き続きアクセス可能(自動リダイレクト)
 だが、正式なURLとしては前者を使う。
+
+---
+
+## D8: 外部GeoJSONの読込が、エラーも出さず全件無視されていた
+
+### 問題
+
+D5の`setWorkerUrl`修正後、GitHub Pages実デプロイで点・線・面の描画・属性編集・保存・
+GeoJSON出力までは正しく動くことを確認できたが、**GeoJSON読込を実機テストしたところ、
+何も表示されず、コンソールエラーも一切出なかった**。
+
+`draw.addFeatures()`の戻り値(`StoreValidation[]`)を確認していなかったことが
+原因の特定を遅らせた——`addFeatures()`は無効なフィーチャーを黙って除外し、例外は
+投げない。実際に戻り値をログ出力して調べたところ、全フィーチャーが「検証失敗」扱いに
+なっていた。
+
+原因: terra-drawの各モード(`TerraDrawPointMode`等)は、フィーチャーの
+`properties.mode`が自分のモード名(`'point'`等)と一致するものだけを自分のものとして
+扱う。これはterra-draw自身がフィーチャーを作成する際に自動的に付与する内部プロパティ
+であり、GeoJSONの標準的な属性ではない。外部からGeoJSONファイルを読み込んだ場合、
+当然この`mode`プロパティは存在せず、`addFeatures()`の検証で機械的に弾かれていた。
+
+### 決定
+
+`main.ts`に`prepareForTerraDraw(feature)`を追加し、GeoJSONを読み込んだ直後・
+`draw.addFeatures()`に渡す直前に、Geometry種別(Point/LineString/Polygon)から
+対応する`mode`文字列を機械的に補完するようにした。あわせて、`addFeatures()`の
+戻り値を確認し、検証に失敗したフィーチャー数と理由(`reason`)を利用者への警告に
+含めるようにした——今後同種の問題が起きても、サイレントな失敗ではなく警告として
+気づけるようにするため。
+
+`geojson.ts`側のコメント・警告文言も訂正した。MultiPoint等の未対応形状について
+以前は「編集不可扱いでそのまま保持する」と書いていたが、実際にはterra-draw側の
+検証で同様に弾かれ、保持されないことが分かったため、「読み込めません」と正直に
+伝える文言に直した。
+
+### 検証
+
+修正前: Point 1件を含むGeoJSONを読み込んでも、フィーチャー一覧は0件のまま
+(`localStorage`の内容も空)だった。
+
+修正後: 同じテストで、Pointフィーチャーは正しく読み込まれて一覧に表示され、
+一緒に含めたMultiPointフィーチャーは「1番目のフィーチャー(MultiPoint)は未対応の
+形状のため読み込めません。」という警告で正しく除外されることを、GitHub Pages上の
+実デプロイで確認した。

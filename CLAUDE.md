@@ -67,6 +67,14 @@ setWorkerUrl(workerUrl);
 有無で行っている——nuyeが作るフィーチャーは`schema.ts`の`defaultProperties()`で
 必ず`id`を持つため(DECISIONS.md D6参照)。
 
+## 外部GeoJSONの読込には`prepareForTerraDraw()`が必須
+
+`draw.addFeatures()`は各フィーチャーの`properties.mode`(`'point'`/`'linestring'`/
+`'polygon'`)を見て検証する——これはterra-draw自身の内部実装の都合であり、GeoJSONの
+標準的な属性ではない。外部からGeoJSONを読み込む処理(`main.ts`のインポートハンドラ)は
+必ず`prepareForTerraDraw()`を経由してからaddFeaturesに渡すこと。これを飛ばすと、
+読み込んだフィーチャーが**エラーも出さずに全て無視される**(DECISIONS.md D8参照)。
+
 ## 属性スキーマは固定(動的テンプレートではない)
 
 MMGISのDraw Toolはファイルごとにカスタム属性フォームを定義できる「テンプレート」方式
