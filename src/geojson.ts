@@ -32,8 +32,8 @@ const SUPPORTED_GEOMETRIES = new Set(['Point', 'LineString', 'Polygon']);
 
 /**
  * FeatureCollection・単一Featureのいずれも受け付ける(起動プロンプト11.3)。
- * MultiPoint/MultiLineString/MultiPolygonは読込は保持するが、初期MVPでは
- * 対応外形状として警告し、そのまま(編集不可扱いで)保持する。
+ * Point/LineString/Polygon以外(MultiPoint等)はterra-draw側の検証で弾かれて
+ * 実際には保持できないため、警告付きでスキップする(初期MVPの制約)。
  */
 export function parseGeoJSONFile(text: string): ParsedImport {
   const warnings: string[] = [];
@@ -65,9 +65,11 @@ export function parseGeoJSONFile(text: string): ParsedImport {
       continue;
     }
     if (!SUPPORTED_GEOMETRIES.has(geomType)) {
-      warnings.push(
-        `${i}番目のフィーチャー(${geomType})は編集非対応の形状として、そのまま保持しました。`
-      );
+      // terra-drawの描画対象はPoint/LineString/Polygonのみ。Multi系等は
+      // 読み込んでもterra-draw側の検証で弾かれ、実際には保持されない
+      // (2026-09-07、実機テストで確認)。正直に「読み込めない」と伝える。
+      warnings.push(`${i}番目のフィーチャー(${geomType})は未対応の形状のため読み込めません。`);
+      continue;
     }
     features.push(f as unknown as GeoJSON.Feature);
   }

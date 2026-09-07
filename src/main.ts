@@ -166,6 +166,26 @@ function inferCategory(geomType: string): Category {
   return 'other';
 }
 
+const TERRA_DRAW_MODE_BY_GEOMETRY: Record<string, string> = {
+  Point: 'point',
+  LineString: 'linestring',
+  Polygon: 'polygon'
+};
+
+// GeoJSONを読み込んだだけのフィーチャーには、terra-draw自身が使う
+// `properties.mode`が無い(これはterra-drawの内部実装の都合であり、GeoJSONの
+// 標準的な属性ではない)。これが無いと`draw.addFeatures()`の検証で弾かれ、
+// 何も表示されないままサイレントに失敗する(2026-09-07、実機テストで発見・
+// DECISIONS.md参照)。外部GeoJSONを読み込む前に必ずこれを通す。
+function prepareForTerraDraw(feature: GeoJSON.Feature): GeoJSON.Feature {
+  const mode = TERRA_DRAW_MODE_BY_GEOMETRY[feature.geometry.type];
+  if (!mode) return feature;
+  return {
+    ...feature,
+    properties: { mode, ...(feature.properties ?? {}) }
+  };
+}
+
 function persist(instance: TerraDraw): void {
   saveFeatures(getDataFeatures(instance));
   renderFeatureList(instance);
@@ -263,14 +283,25 @@ function renderIOTools(): void {
     const text = await file.text();
     try {
       const { features, warnings } = parseGeoJSONFile(text);
+      const preparedFeatures = features.map(prepareForTerraDraw);
       const replace = confirm(
         `${features.length}件のフィーチャーを読み込みます。\n\nOK: 現在の内容を置き換える\nキャンセル: 現在の内容に追加する`
       );
       if (replace) {
         draw.clear();
       }
-      if (features.length) {
-        draw.addFeatures(features as unknown as Parameters<TerraDraw['addFeatures']>[0]);
+      if (preparedFeatures.length) {
+        const results = draw.addFeatures(
+          preparedFeatures as unknown as Parameters<TerraDraw['addFeatures']>[0]
+        );
+        const rejected = results.filter((r) => !r.valid);
+        if (rejected.length) {
+          warnings.push(
+            `${rejected.length}件のフィーチャーが検証エラーのため読み込めませんでした: ${rejected
+              .map((r) => r.reason ?? '')
+              .join(', ')}`
+          );
+        }
       }
       if (warnings.length) {
         alert(`一部のフィーチャーを読み込めませんでした:\n\n${warnings.join('\n')}`);
