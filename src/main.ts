@@ -25,6 +25,7 @@ import { CATEGORY_LABELS, STATUS_LABELS, defaultProperties } from './schema';
 import type { Category, NuyeProperties, Status } from './schema';
 import { loadFeatures, saveFeatures, lastSavedAt, clearFeatures } from './storage';
 import { downloadGeoJSON, parseGeoJSONFile } from './geojson';
+import sampleMissionRaw from './data/sample-mission.geojson?raw';
 import './style.css';
 
 setWorkerUrl(workerUrl);
@@ -38,6 +39,7 @@ app.innerHTML = `
   <div id="topbar">
     <div id="brand">Nuye</div>
     <div id="basemap-switch"></div>
+    <div id="terrain-toggle"></div>
     <div id="save-status"></div>
   </div>
   <div id="body">
@@ -56,6 +58,7 @@ const ioToolsEl = document.querySelector<HTMLDivElement>('#io-tools')!;
 const featureListEl = document.querySelector<HTMLDivElement>('#feature-list')!;
 const attributePanelEl = document.querySelector<HTMLDivElement>('#attribute-panel')!;
 const basemapSwitchEl = document.querySelector<HTMLDivElement>('#basemap-switch')!;
+const terrainToggleEl = document.querySelector<HTMLDivElement>('#terrain-toggle')!;
 const saveStatusEl = document.querySelector<HTMLDivElement>('#save-status')!;
 
 // terra-drawのgetSnapshot()には、選択中フィーチャーの編集ハンドル(selectionPoint)
@@ -85,6 +88,48 @@ const map = new maplibregl.Map({
 map.addControl(new maplibregl.AttributionControl({ compact: true }));
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 map.on('error', (e) => console.error('[nuye] maplibre error', e.error));
+
+// ---------------------------------------------------------------------------
+// 地形(hfu/mapterhorn-japan-bridgeを直接参照、DECISIONS.md D3)
+//
+// map.setStyle()はterra-drawのsource/layerだけでなく、ここで追加した地形の
+// source/layerも巻き込んで消す。基本マップ切替のたびに呼び直す必要がある
+// (terra-drawの再構築と同じ理由、buildDraw()のコメント参照)。
+// ---------------------------------------------------------------------------
+
+let terrainEnabled = false;
+
+function setupTerrain(): void {
+  if (!map.getSource(TERRAIN_SOURCE.id)) {
+    map.addSource(TERRAIN_SOURCE.id, {
+      type: 'raster-dem',
+      url: TERRAIN_SOURCE.url,
+      encoding: TERRAIN_SOURCE.encoding,
+      tileSize: TERRAIN_SOURCE.tileSize
+    });
+  }
+  if (!map.getLayer('hillshade')) {
+    map.addLayer({
+      id: 'hillshade',
+      type: 'hillshade',
+      source: TERRAIN_SOURCE.id,
+      layout: { visibility: terrainEnabled ? 'visible' : 'none' },
+      paint: {
+        'hillshade-exaggeration': 0.6,
+        'hillshade-shadow-color': 'rgba(60,60,60,1)',
+        'hillshade-highlight-color': 'rgba(255,255,255,1)',
+        'hillshade-accent-color': 'rgba(90,90,90,1)'
+      }
+    });
+  }
+  map.setTerrain(terrainEnabled ? { source: TERRAIN_SOURCE.id, exaggeration: 1.5 } : null);
+}
+
+function toggleTerrain(): void {
+  terrainEnabled = !terrainEnabled;
+  map.setLayoutProperty('hillshade', 'visibility', terrainEnabled ? 'visible' : 'none');
+  map.setTerrain(terrainEnabled ? { source: TERRAIN_SOURCE.id, exaggeration: 1.5 } : null);
+}
 
 // CSSグリッドレイアウトでは#mapの実サイズがMapLibre初期化時点ではまだ確定して
 // いないことがある(初回描画がおかしなキャンバスサイズになる)。#mapのサイズ変化を
@@ -153,7 +198,12 @@ function buildDraw(initialFeatures: GeoJSON.Feature[]): TerraDraw {
   });
 
   instance.on('change', () => persist(instance));
-  instance.on('select', () => renderAttributePanel(instance));
+  instance.on('select', () => {
+    renderAttributePanel(instance);
+    // selectFeature()は暗黙にselectモードへ切り替える(描画完了直後の自動選択・
+    // 一覧クリックでの選択、いずれも該当)。ツールボタンのハイライトをそれに追従させる。
+    syncToolButtons();
+  });
   instance.on('deselect', () => renderAttributePanel(instance));
 
   return instance;
@@ -193,11 +243,13 @@ function persist(instance: TerraDraw): void {
 }
 
 map.on('load', () => {
+  setupTerrain();
   draw = buildDraw(loadFeatures());
   persist(draw);
   renderDrawTools();
   renderBasemapSwitch();
   renderIOTools();
+  renderTerrainToggle();
   renderSaveStatus();
 });
 
@@ -211,9 +263,11 @@ function switchBasemap(id: BasemapId): void {
   currentBasemap = id;
   map.setStyle(BASEMAP_STYLES[id]);
   map.once('style.load', () => {
+    setupTerrain();
     draw = buildDraw(snapshot);
     renderFeatureList(draw);
     renderBasemapSwitch();
+    syncToolButtons();
   });
 }
 
@@ -226,6 +280,19 @@ function renderBasemapSwitch(): void {
     btn.addEventListener('click', () => switchBasemap(id));
     basemapSwitchEl.appendChild(btn);
   });
+}
+
+function renderTerrainToggle(): void {
+  terrainToggleEl.innerHTML = '';
+  const btn = document.createElement('button');
+  btn.textContent = '地形';
+  btn.title = '陰影起伏・3D地形の表示切替(hfu/mapterhorn-japan-bridge)';
+  btn.className = terrainEnabled ? 'active' : '';
+  btn.addEventListener('click', () => {
+    toggleTerrain();
+    btn.className = terrainEnabled ? 'active' : '';
+  });
+  terrainToggleEl.appendChild(btn);
 }
 
 // ---------------------------------------------------------------------------
@@ -246,10 +313,10 @@ function renderDrawTools(): void {
   TOOLS.forEach((t) => {
     const btn = document.createElement('button');
     btn.textContent = t.label;
+    btn.dataset.mode = t.mode;
     btn.addEventListener('click', () => {
       draw.setMode(t.mode);
-      [...row.children].forEach((c) => c.classList.remove('active'));
-      btn.classList.add('active');
+      syncToolButtons();
     });
     if (t.mode === 'select') btn.classList.add('active');
     row.appendChild(btn);
@@ -257,9 +324,54 @@ function renderDrawTools(): void {
   drawToolsEl.appendChild(row);
 }
 
+// terra-draw自身がモードを切り替える場面(フィーチャー描き終わり後の自動select化、
+// 一覧クリックでのselectFeature)では、ツールボタンのハイライトが取り残されて
+// 実際のモードと食い違うことがあった。モードが変わりうる箇所では必ずこれを呼ぶ。
+function syncToolButtons(): void {
+  const mode = draw.getMode();
+  drawToolsEl.querySelectorAll<HTMLButtonElement>('button[data-mode]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+}
+
 // ---------------------------------------------------------------------------
 // 持出し・再読込・全消去(サイドバー)
 // ---------------------------------------------------------------------------
+
+// GeoJSONテキストをdrawへ読み込む共通処理。ファイル入力からの読込と、サンプル
+// ミッションの読込の両方から使う。
+function loadGeoJSONText(text: string, { askReplace }: { askReplace: boolean }): void {
+  try {
+    const { features, warnings } = parseGeoJSONFile(text);
+    const preparedFeatures = features.map(prepareForTerraDraw);
+    const replace = askReplace
+      ? confirm(
+          `${features.length}件のフィーチャーを読み込みます。\n\nOK: 現在の内容を置き換える\nキャンセル: 現在の内容に追加する`
+        )
+      : false;
+    if (replace) {
+      draw.clear();
+    }
+    if (preparedFeatures.length) {
+      const results = draw.addFeatures(
+        preparedFeatures as unknown as Parameters<TerraDraw['addFeatures']>[0]
+      );
+      const rejected = results.filter((r) => !r.valid);
+      if (rejected.length) {
+        warnings.push(
+          `${rejected.length}件のフィーチャーが検証エラーのため読み込めませんでした: ${rejected
+            .map((r) => r.reason ?? '')
+            .join(', ')}`
+        );
+      }
+    }
+    if (warnings.length) {
+      alert(`一部のフィーチャーを読み込めませんでした:\n\n${warnings.join('\n')}`);
+    }
+  } catch (err) {
+    alert(`読込に失敗しました: ${(err as Error).message}`);
+  }
+}
 
 function renderIOTools(): void {
   ioToolsEl.innerHTML = '<h2>持出し・読込</h2>';
@@ -281,39 +393,19 @@ function renderIOTools(): void {
     const file = importInput.files?.[0];
     if (!file) return;
     const text = await file.text();
-    try {
-      const { features, warnings } = parseGeoJSONFile(text);
-      const preparedFeatures = features.map(prepareForTerraDraw);
-      const replace = confirm(
-        `${features.length}件のフィーチャーを読み込みます。\n\nOK: 現在の内容を置き換える\nキャンセル: 現在の内容に追加する`
-      );
-      if (replace) {
-        draw.clear();
-      }
-      if (preparedFeatures.length) {
-        const results = draw.addFeatures(
-          preparedFeatures as unknown as Parameters<TerraDraw['addFeatures']>[0]
-        );
-        const rejected = results.filter((r) => !r.valid);
-        if (rejected.length) {
-          warnings.push(
-            `${rejected.length}件のフィーチャーが検証エラーのため読み込めませんでした: ${rejected
-              .map((r) => r.reason ?? '')
-              .join(', ')}`
-          );
-        }
-      }
-      if (warnings.length) {
-        alert(`一部のフィーチャーを読み込めませんでした:\n\n${warnings.join('\n')}`);
-      }
-    } catch (err) {
-      alert(`読込に失敗しました: ${(err as Error).message}`);
-    } finally {
-      importInput.value = '';
-    }
+    loadGeoJSONText(text, { askReplace: true });
+    importInput.value = '';
   });
   importLabel.appendChild(importInput);
   ioToolsEl.appendChild(importLabel);
+
+  const sampleBtn = document.createElement('button');
+  sampleBtn.textContent = 'サンプルミッションを読込';
+  sampleBtn.title = '札幌駅〜月寒中央の模擬調査経路・観測地点・区域(技術実証用の模擬データ)';
+  sampleBtn.addEventListener('click', () => {
+    loadGeoJSONText(sampleMissionRaw, { askReplace: true });
+  });
+  ioToolsEl.appendChild(sampleBtn);
 
   const clearBtn = document.createElement('button');
   clearBtn.textContent = 'すべて消去';
@@ -472,8 +564,3 @@ function renderSaveStatus(): void {
   const at = lastSavedAt();
   saveStatusEl.textContent = at ? `保存済み ${new Date(at).toLocaleTimeString('ja-JP')}` : '未保存';
 }
-
-// TERRAIN_SOURCEは今回のPhase 2縦切りではまだ使わない(Phase 4で統合予定、
-// HANDOVER.md参照)。importして未使用のままでは型チェックに引っかかるため、
-// ここで参照だけしておく。
-void TERRAIN_SOURCE;

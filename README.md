@@ -38,14 +38,18 @@ NASA AMMOSのMMGISを、ミッション指向の共同マッピングの参照�
 3. 内容はブラウザ内(LocalStorage)に自動保存される。同一端末・同一ブラウザに限られる
 4. GeoJSONとしてダウンロードして持ち出せる。ダウンロードしたGeoJSONは再読込できる
 5. 背景地図はstars(`stars.optgeo.org`)ホストのpositron/bvmap-darkを切り替え可能
+6. トップバーの「地形」ボタンで、陰影起伏・3D地形の表示を切り替えられる
+   (`hfu/mapterhorn-japan-bridge`)
+7. サイドバー「サンプルミッションを読込」で、札幌駅〜月寒中央の模擬調査経路・
+   観測地点・区域を試しに読み込める(すべて技術実証用の模擬データ)
 
 ## データと出典
 
 - 背景地図: stars(`https://stars.optgeo.org/style/positron`、
   `https://stars.optgeo.org/style/bvmap-dark`)を直接参照。Nuye側にタイル・スタイルの
   複製は置かない
-- 地形(実装予定): `hfu/mapterhorn-japan-bridge`が公開しているterrain PMTiles
-  (`https://stars.optgeo.org/mapterhorn-japan-bridge`)を同様に直接参照する予定
+- 地形: `hfu/mapterhorn-japan-bridge`が公開しているterrain PMTiles
+  (`https://stars.optgeo.org/mapterhorn-japan-bridge`)を同様に直接参照する
 - 描画データ(観測・経路・区域等)はすべて利用者のブラウザ内、またはダウンロードした
   GeoJSONファイルに存在する。サーバーサイド保存はまだ無い
 
@@ -53,18 +57,19 @@ NASA AMMOSのMMGISを、ミッション指向の共同マッピングの参照�
 
 ```bash
 npm ci
-npm run dev     # ローカル開発サーバー
-npm run build   # docs/ に静的ビルド出力(GitHub Pages配信用)
+npm run build && npx vite preview   # ローカル動作確認(下記「動作確認について」参照)
+npm run build                       # docs/ に静的ビルド出力(GitHub Pages配信用)
 ```
 
 `docs/`はビルド成果物であり、直接編集しない。
 
 ### 動作確認について
 
-地図・描画機能の動作確認は、ローカルのdev serverではなく**実際にデプロイした
-GitHub Pages上**で行うこと。MapLibre GL JS v6のワーカー読み込みまわりで、ローカルの
-Vite dev/preview serverは本番と異なる不安定な挙動を示すことがある(詳細は
-[DECISIONS.md](DECISIONS.md) D5参照)。
+**`npm run dev`は使わないこと**——MapLibre GL JS v6のワーカー読み込みが、Viteの
+devモードのHMRクライアント注入と相性が悪く、地図が一切表示されない
+(詳細は[DECISIONS.md](DECISIONS.md) D5参照)。ローカルでの地図・描画機能の確認は
+`npm run build && npx vite preview`で行うこと(初回描画に数十秒かかることがあるので
+気長に待つ)。最終確認は実際にデプロイしたGitHub Pages上で行う。
 
 ## 既知の制約
 
@@ -72,7 +77,7 @@ Vite dev/preview serverは本番と異なる不安定な挙動を示すことが
 - 属性スキーマは固定1本(MMGISのようなファイルごとのカスタムテンプレートは無い)
 - 対応Geometryは点・線・面のみ。Multi系(MultiPoint等)は読込非対応(警告を出して
   スキップする)
-- 地形統合・サンプルミッション(札幌駅〜月寒中央)はまだ実装していない
+- 簡易標高断面(地形統合の次段階)はまだ実装していない
 
 未着手事項・次の一手は[HANDOVER.md](HANDOVER.md)参照。
 

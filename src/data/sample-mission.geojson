@@ -1,0 +1,150 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [141.3508, 43.0686],
+          [141.3559, 43.0609],
+          [141.3564, 43.0554],
+          [141.3688, 43.0480],
+          [141.3780, 43.0400],
+          [141.3850, 43.0320],
+          [141.3939, 43.0217]
+        ]
+      },
+      "properties": {
+        "id": "sample-route-001",
+        "name": "模擬調査経路: 札幌駅→月寒中央",
+        "category": "route",
+        "status": "in_progress",
+        "observed_at": null,
+        "observer": "",
+        "notes": "技術実証用の模擬データ。大通・すすきの・豊平川横断部・豊平/美園周辺を経由する想定経路。",
+        "source": "dwg7/nuye sample",
+        "next_action": "月寒中央までの残り区間を確認する",
+        "updated_at": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [141.3559, 43.0609] },
+      "properties": {
+        "id": "sample-obs-001",
+        "name": "大通確認地点",
+        "category": "observation",
+        "status": "confirmed",
+        "observed_at": "2026-09-07T09:15:00+09:00",
+        "observer": "",
+        "notes": "技術実証用の模擬データ。都心部、通行に支障なし。",
+        "source": "dwg7/nuye sample",
+        "next_action": "",
+        "updated_at": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [141.3688, 43.0480] },
+      "properties": {
+        "id": "sample-obs-002",
+        "name": "豊平川横断部確認地点",
+        "category": "observation",
+        "status": "confirmed",
+        "observed_at": "2026-09-07T09:40:00+09:00",
+        "observer": "",
+        "notes": "技術実証用の模擬データ。橋梁部、通行に支障なし。",
+        "source": "dwg7/nuye sample",
+        "next_action": "",
+        "updated_at": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [141.3850, 43.0320] },
+      "properties": {
+        "id": "sample-obs-003",
+        "name": "豊平・美園周辺要確認地点",
+        "category": "observation",
+        "status": "needs_review",
+        "observed_at": "2026-09-07T10:05:00+09:00",
+        "observer": "",
+        "notes": "技術実証用の模擬データ。現地状況の再確認が必要な想定地点。",
+        "source": "dwg7/nuye sample",
+        "next_action": "現地状況を再確認する",
+        "updated_at": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [141.392, 43.024] },
+      "properties": {
+        "id": "sample-next-001",
+        "name": "次回確認地点(月寒中央付近)",
+        "category": "next_action",
+        "status": "planned",
+        "observed_at": null,
+        "observer": "",
+        "notes": "技術実証用の模擬データ。次回班が確認予定の地点。",
+        "source": "dwg7/nuye sample",
+        "next_action": "到達後、周辺施設を確認する",
+        "updated_at": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [141.345, 43.045],
+            [141.375, 43.045],
+            [141.375, 43.072],
+            [141.345, 43.072],
+            [141.345, 43.045]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "sample-area-001",
+        "name": "調査済み区域(札幌駅〜豊平川横断部)",
+        "category": "area",
+        "status": "completed",
+        "observed_at": "2026-09-07T09:45:00+09:00",
+        "observer": "",
+        "notes": "技術実証用の模擬データ。",
+        "source": "dwg7/nuye sample",
+        "next_action": "",
+        "updated_at": null
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [141.375, 43.018],
+            [141.400, 43.018],
+            [141.400, 43.048],
+            [141.375, 43.048],
+            [141.375, 43.018]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "sample-area-002",
+        "name": "未確認区域(豊平川横断部〜月寒中央)",
+        "category": "area",
+        "status": "unconfirmed",
+        "observed_at": null,
+        "observer": "",
+        "notes": "技術実証用の模擬データ。",
+        "source": "dwg7/nuye sample",
+        "next_action": "次班が確認する",
+        "updated_at": null
+      }
+    }
+  ]
+}

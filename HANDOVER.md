@@ -2,8 +2,9 @@
 
 ## Status as of 2026-09-07
 
-Phase 0(調査)〜Phase 2(書き込みの縦切り)相当が完了。`dwg7/nuye`を立ち上げ、
-GitHub Pagesで公開している。
+Phase 0(調査)〜Phase 4(地形統合)相当まで完了。`dwg7/nuye`を立ち上げ、
+GitHub Pagesで公開している。サンプルミッション(Phase 3)・地形統合(Phase 4)は
+コード上は実装済みだが、下記「未確認の機能」に実機確認待ちのものを記載している。
 
 - 動作確認済みURL: **https://dwg7.unopengis.org/nuye/**
   (`dwg7.github.io/nuye/`はここへ301リダイレクトされる、DECISIONS.md D7)
@@ -34,13 +35,16 @@ GitHub Pagesで公開している。
 - フィーチャーのドラッグ移動・頂点編集(select mode flagsで`draggable`/
   `coordinates.draggable`等は有効にしてあるが、実機でのドラッグ操作そのものは
   まだテストしていない)
+- サンプルミッション読込ボタン(実装は既存のGeoJSON読込パイプラインの再利用なので
+  動く可能性は高いが、実機クリックでの確認はまだ)
+- 地形トグル(hillshade表示・3D地形・ベースマップ切替後の再適用)の実機確認
 
 ## 利用中の外部URL(すべて実際にfetchして確認済み、DECISIONS.md D3参照)
 
 ```
 https://stars.optgeo.org/style/positron
 https://stars.optgeo.org/style/bvmap-dark
-https://stars.optgeo.org/mapterhorn-japan-bridge   (地形、まだ未統合)
+https://stars.optgeo.org/mapterhorn-japan-bridge   (地形、DECISIONS.md D12で統合)
 ```
 
 ## 描画ライブラリ
@@ -70,12 +74,16 @@ status: planned/unconfirmed/in_progress/confirmed/needs_review/completed
   正しく動作するが、初回描画に数十秒かかることがあるだけだった(DECISIONS.md D5訂正・
   CLAUDE.md参照)。今後のローカル確認は`npm run build && npx vite preview`を使う
 
+## 解決済み事項(続き)
+
+- ~~テスト領域の中心・ズームが暫定値のまま~~ → Web Mercatorのmeters-per-pixel計算と
+  実機目視で確認し、確定値とした(DECISIONS.md D10)
+- ~~描画ツールボタンのハイライトが実際のモードとずれることがある~~ →
+  `syncToolButtons()`で修正(DECISIONS.md D9)
+
 ## 未解決事項(推測で埋めていない)
 
-1. テスト領域(札幌駅〜月寒中央)の正確な中心・ズームは、両地点の中間点からの
-   暫定算出値(`mapSources.ts`のコメント参照)。実際に地図上で見て微調整すべきという
-   起動プロンプトの指示に、まだ従い切れていない
-2. 一覧からフィーチャーを選択した直後、直前に選択していた別フィーチャー(面)の
+1. 一覧からフィーチャーを選択した直後、直前に選択していた別フィーチャー(面)の
    編集ハンドルが視覚的に残って見えることがあった(1回だけ実機で観測、再現手順は
    未確定)。データ自体(属性パネルの内容)は正しく切り替わっていたので実害は
    無いと見ているが、再現すれば見た目の問題として調べる価値がある
@@ -91,14 +99,15 @@ status: planned/unconfirmed/in_progress/confirmed/needs_review/completed
   (DECISIONS.md D8参照)
 - ベースマップ切替は`TerraDraw`インスタンスを毎回作り直す設計。`map.setStyle()`が
   terra-drawの管理するsource/layerも巻き込んで消すため(say-your-gridのグリッド枠と
-  同種の問題)
+  同種の問題)。**地形のsource/layerも同じ理由で毎回消えるため、`setupTerrain()`を
+  同じタイミングで呼び直している**(DECISIONS.md D12)
 
 ## 次に行うべき作業(優先度順)
 
-1. サンプルミッション(札幌駅〜月寒中央の模擬調査経路・観測地点・区域)を追加する
-   (Phase 3)
-2. 地形統合(`mapterhorn-japan-bridge`、Phase 4)——URLは確認済みなので着手障壁は無い
-3. テスト領域の中心・ズームを実際に地図で見て微調整する
+1. サンプルミッション読込・地形トグルの実機確認を完了させる
+2. 簡易標高断面(起動プロンプトの「優先度の高い追加機能」、地形統合の次段階)
+3. Phase 5: MMGIS機能との対応整理・静的MVPで足りる用途の整理(MMGIS_REVIEW.mdの
+   さらなる充実)
 
 ## Where to look
 
