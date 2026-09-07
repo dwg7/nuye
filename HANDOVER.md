@@ -2,9 +2,8 @@
 
 ## Status as of 2026-09-07
 
-Phase 0(調査)〜Phase 4(地形統合)相当まで完了。`dwg7/nuye`を立ち上げ、
-GitHub Pagesで公開している。サンプルミッション(Phase 3)・地形統合(Phase 4)は
-コード上は実装済みだが、下記「未確認の機能」に実機確認待ちのものを記載している。
+Phase 0(調査)〜Phase 4(地形統合)まで完了・実機確認済み。`dwg7/nuye`を立ち上げ、
+GitHub Pagesで公開している。
 
 - 動作確認済みURL: **https://dwg7.unopengis.org/nuye/**
   (`dwg7.github.io/nuye/`はここへ301リダイレクトされる、DECISIONS.md D7)
@@ -12,32 +11,36 @@ GitHub Pagesで公開している。サンプルミッション(Phase 3)・地�
 ## 動作確認済みの機能
 
 実際にGitHub Pages上のデプロイ(`https://dwg7.unopengis.org/nuye/`)で、以下すべてを
-実機確認した(点・線・面の作成→属性編集→一覧クリック選択→GeoJSON出力→GeoJSON
-読込→すべて消去→ブラウザ保存の再読込→ベースマップ切替、を一通り)。
+実機確認した。
 
-- 地図表示(stars positron、初期中心=札幌駅〜月寒中央の中間点、zoom 12.5)
+- 地図表示(stars positron、初期中心=札幌駅〜月寒中央の中間点、zoom 12.5——
+  実測で確認済み、DECISIONS.md D10)
 - 点・線・面の描画(terra-draw)。描き終わると自動的に選択状態になり、属性パネルが開く
 - 属性編集(名称・カテゴリ・状態・観測者・注記・次の行動・出典)。フィーチャー一覧の
   表示にも反映される
-- フィーチャー一覧からのクリック選択
+- フィーチャー一覧からのクリック選択(描画ツールボタンのハイライトも追従する、
+  DECISIONS.md D9)
 - フィーチャーの削除
 - ブラウザ内保存(LocalStorage)、保存時刻の表示、ページ再読込後の復元
-- ベースマップ切替(positron⇔bvmap-dark)。切替後もフィーチャーが引き継がれる
-  (`TerraDraw`インスタンスをスナップショット付きで作り直す方式、DECISIONS.md D5の
-  コメント参照)
-- GeoJSONダウンロード(3件描いて出力→内部ヘルパーフィーチャー混入なしを確認)
+- ベースマップ切替(positron⇔bvmap-dark)。切替後もフィーチャー・地形設定の両方が
+  引き継がれる(`TerraDraw`インスタンス・地形source/layerとも作り直す方式、
+  DECISIONS.md D5・D12)
+- GeoJSONダウンロード(内部ヘルパーフィーチャー混入なしを確認)
 - GeoJSON読込(Point/LineString/Polygonは正しく読み込まれ、未対応形状
   (MultiPoint等)は正直に警告を出して読み込まないことを確認、DECISIONS.md D8)
 - 「すべて消去」(LocalStorageが`null`になることまで確認)
+- **サンプルミッション読込**: 7件(経路1・確認地点3・次回確認地点1・区域2)すべてが
+  正しいカテゴリ・状態ラベルで読み込まれ、地図上にも経路・区域・地点として正しく
+  描画されることを確認(DECISIONS.md D11)
+- **地形トグル**: ON/OFF切替、attribution表示("Processed with Mapterhorn")での
+  ソース接続確認、ベースマップ切替後も地形ON状態が維持されることを確認
+  (DECISIONS.md D12)
 
 ## 未確認の機能
 
 - フィーチャーのドラッグ移動・頂点編集(select mode flagsで`draggable`/
   `coordinates.draggable`等は有効にしてあるが、実機でのドラッグ操作そのものは
   まだテストしていない)
-- サンプルミッション読込ボタン(実装は既存のGeoJSON読込パイプラインの再利用なので
-  動く可能性は高いが、実機クリックでの確認はまだ)
-- 地形トグル(hillshade表示・3D地形・ベースマップ切替後の再適用)の実機確認
 
 ## 利用中の外部URL(すべて実際にfetchして確認済み、DECISIONS.md D3参照)
 
