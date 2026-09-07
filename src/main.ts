@@ -58,6 +58,17 @@ const attributePanelEl = document.querySelector<HTMLDivElement>('#attribute-pane
 const basemapSwitchEl = document.querySelector<HTMLDivElement>('#basemap-switch')!;
 const saveStatusEl = document.querySelector<HTMLDivElement>('#save-status')!;
 
+// terra-drawのgetSnapshot()には、選択中フィーチャーの編集ハンドル(selectionPoint)
+// や線・面の中点ハンドル(midPoint)といった、描画UIのための内部フィーチャーも
+// 混ざって返ってくる(nuyeの属性を持たない)。それらはnuyeの「書き込み」ではないので、
+// 保存・一覧表示・持出しのいずれからも除外する——`properties.id`の有無で判別する
+// (nuyeが作るフィーチャーは必ずschema.tsのdefaultProperties()でidを持つため)。
+function getDataFeatures(instance: TerraDraw): GeoJSON.Feature[] {
+  return (instance.getSnapshot() as unknown as GeoJSON.Feature[]).filter(
+    (f) => (f.properties as Record<string, unknown> | null)?.id !== undefined
+  );
+}
+
 // ---------------------------------------------------------------------------
 // 地図
 // ---------------------------------------------------------------------------
@@ -73,10 +84,7 @@ const map = new maplibregl.Map({
 });
 map.addControl(new maplibregl.AttributionControl({ compact: true }));
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
-map.on('error', (e) => console.error('[nuye] maplibre error', e.error, e));
-map.on('styledata', () => console.log('[nuye] styledata', map.isStyleLoaded()));
-map.on('idle', () => console.log('[nuye] idle'));
-(window as unknown as { __map: unknown }).__map = map;
+map.on('error', (e) => console.error('[nuye] maplibre error', e.error));
 
 // CSSグリッドレイアウトでは#mapの実サイズがMapLibre初期化時点ではまだ確定して
 // いないことがある(初回描画がおかしなキャンバスサイズになる)。#mapのサイズ変化を
@@ -159,27 +167,18 @@ function inferCategory(geomType: string): Category {
 }
 
 function persist(instance: TerraDraw): void {
-  const snapshot = instance.getSnapshot() as unknown as GeoJSON.Feature[];
-  saveFeatures(snapshot);
+  saveFeatures(getDataFeatures(instance));
   renderFeatureList(instance);
   renderSaveStatus();
 }
 
-console.log('[nuye] module top-level executed');
 map.on('load', () => {
-  console.log('[nuye] map load event fired');
-  try {
-    draw = buildDraw(loadFeatures());
-    console.log('[nuye] buildDraw done');
-    persist(draw);
-    renderDrawTools();
-    renderBasemapSwitch();
-    renderIOTools();
-    renderSaveStatus();
-    console.log('[nuye] UI render done');
-  } catch (err) {
-    console.error('[nuye] error in load handler', err);
-  }
+  draw = buildDraw(loadFeatures());
+  persist(draw);
+  renderDrawTools();
+  renderBasemapSwitch();
+  renderIOTools();
+  renderSaveStatus();
 });
 
 // ---------------------------------------------------------------------------
@@ -188,7 +187,7 @@ map.on('load', () => {
 
 function switchBasemap(id: BasemapId): void {
   if (id === currentBasemap) return;
-  const snapshot = draw.getSnapshot() as unknown as GeoJSON.Feature[];
+  const snapshot = getDataFeatures(draw);
   currentBasemap = id;
   map.setStyle(BASEMAP_STYLES[id]);
   map.once('style.load', () => {
@@ -248,7 +247,7 @@ function renderIOTools(): void {
   const exportBtn = document.createElement('button');
   exportBtn.textContent = 'GeoJSONをダウンロード';
   exportBtn.addEventListener('click', () => {
-    downloadGeoJSON(draw.getSnapshot() as unknown as GeoJSON.Feature[]);
+    downloadGeoJSON(getDataFeatures(draw));
   });
   ioToolsEl.appendChild(exportBtn);
 
@@ -302,7 +301,7 @@ function renderIOTools(): void {
 // ---------------------------------------------------------------------------
 
 function renderFeatureList(instance: TerraDraw): void {
-  const snapshot = instance.getSnapshot();
+  const snapshot = getDataFeatures(instance);
   featureListEl.innerHTML = `<h2>書き込み一覧 (${snapshot.length})</h2>`;
   const list = document.createElement('ul');
   snapshot.forEach((f) => {
