@@ -50,13 +50,22 @@ setWorkerUrl(workerUrl);
 
 `?worker&url`は必須(単なる`?url`ではワーカーの依存ファイルが同梱されない)。
 
-## 動作確認はGitHub Pages上で行う
+## ローカル動作確認は`npm run dev`ではなく`vite preview`で行う
 
-ローカルのVite dev server / `vite preview`は、ワーカー配信まわりで本番と異なる
-不安定な挙動を示すことがある(DECISIONS.md D5訂正参照)。地図・描画機能の動作確認は
-`npm run build`してGitHub Pagesへpushした実URL
-(`https://dwg7.unopengis.org/nuye/`)で行うこと。ローカルdev serverでの確認が
-うまくいかなくても、それだけで実装のバグと判断しない。
+**`npm run dev`はMapLibreのワーカー読み込みが壊れており、地図が一切表示されない。**
+Viteのdevモードが全モジュールにHMRクライアント向けimportを注入する処理が、
+ワーカーのグローバルスコープ内で解決できないため(DECISIONS.md D5訂正参照)。
+
+ローカルで地図・描画機能を確認する場合は、必ずこちらを使うこと:
+
+```bash
+npm run build && npx vite preview
+```
+
+`vite preview`(ビルド成果物をそのまま静的配信するモード)は正しく動作するが、
+初回描画に数十秒かかることがある——短時間で「表示されない」と判断せず、
+十分待つこと。最終的な動作確認はGitHub Pages実URL
+(`https://dwg7.unopengis.org/nuye/`)で行う。
 
 ## terra-drawのスナップショットにはUI用の内部フィーチャーが混ざる
 

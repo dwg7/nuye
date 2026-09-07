@@ -62,17 +62,20 @@ id, name, category, status, observed_at, observer, notes, source, next_action, u
 category: observation/route/area/hazard/facility/photo/instruction/next_action/other
 status: planned/unconfirmed/in_progress/confirmed/needs_review/completed
 
+## 解決済み事項
+
+- ~~ローカルのVite dev server / `vite preview`で`map.on('load')`が安定しない~~
+  → 原因を切り分けて解決した。**`npm run dev`は実際に壊れている**
+  (HMRクライアント注入とワーカーの相性問題)。`vite preview`・GitHub Pages実配信は
+  正しく動作するが、初回描画に数十秒かかることがあるだけだった(DECISIONS.md D5訂正・
+  CLAUDE.md参照)。今後のローカル確認は`npm run build && npx vite preview`を使う
+
 ## 未解決事項(推測で埋めていない)
 
-1. **ローカルのVite dev server / `vite preview`で、`map.on('load')`が安定して
-   発火しない。** `setWorkerUrl`修正後、GitHub Pages実デプロイでは問題なく動作する
-   ことを確認したが、ローカル環境固有の原因(Vite dev serverのワーカー配信の癖と
-   推測しているが未確定)は特定しきれていない。今後の動作確認はGitHub Pages上で
-   行う運用にした(CLAUDE.md参照)が、開発体験としては改善の余地がある
-2. テスト領域(札幌駅〜月寒中央)の正確な中心・ズームは、両地点の中間点からの
+1. テスト領域(札幌駅〜月寒中央)の正確な中心・ズームは、両地点の中間点からの
    暫定算出値(`mapSources.ts`のコメント参照)。実際に地図上で見て微調整すべきという
    起動プロンプトの指示に、まだ従い切れていない
-3. 一覧からフィーチャーを選択した直後、直前に選択していた別フィーチャー(面)の
+2. 一覧からフィーチャーを選択した直後、直前に選択していた別フィーチャー(面)の
    編集ハンドルが視覚的に残って見えることがあった(1回だけ実機で観測、再現手順は
    未確定)。データ自体(属性パネルの内容)は正しく切り替わっていたので実害は
    無いと見ているが、再現すれば見た目の問題として調べる価値がある

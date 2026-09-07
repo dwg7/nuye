@@ -157,14 +157,26 @@ GitHub Pages上でも**地図が表示されなかった。修正後、GitHub Pa
 
 ### 訂正(同日)
 
-修正適用後もローカルのVite dev server / `vite preview`では`map.on('load')`が
-安定して発火しない状態が残った(`isStyleLoaded()`はtrueになるがワーカー経由の
-タイル解決が不安定)。一方、同じビルド成果物をGitHub Pagesの実URLで開いたところ、
-地図・サイドバーの全UIが問題なく描画された。ローカルのVite開発サーバー特有の
-ワーカー配信(MIMEタイプ・SPAフォールバック)の癖であり、`setWorkerUrl`の修正自体は
-正しく、本番相当の静的ホスティングでは問題にならないと判断した。**今後のnuyeの
-動作確認は、ローカルdev serverではなく実際にデプロイしたGitHub Pages上で行う**
-——HANDOVER.mdに運用上の注意として記録。
+修正適用直後は、ローカルのVite dev server / `vite preview`のどちらでも
+`map.on('load')`が発火しない状態を観測し、「ローカル環境全般が信頼できない」と
+一旦記録した。後日、`npm run dev`と`vite preview`を切り分けて再検証したところ、
+実態はより具体的だった:
+
+- **`npm run dev`(HMR付きdevモード)は実際に壊れている。** Viteはdevモードで配信する
+  すべての`.mjs`/`.js`にHMRクライアント向けのimport
+  (`import { injectQuery } from "/nuye/@vite/client"`)を注入するが、これが
+  ワーカーのグローバルスコープ内では正しく解決されず、ワーカーの初期化が
+  止まったまま何も応答しない(何十秒待っても`map.on('load')`が発火しない)
+- **`vite preview`(ビルド成果物をそのまま静的配信するモード)、および実際の
+  GitHub Pages配信は、正しく動作する。** ただし、この検証環境では初回描画までに
+  20〜30秒程度かかることがあり、待ち時間が短いと「動いていない」ように見えて
+  誤診断しやすい
+
+**結論**: `setWorkerUrl`の修正自体は正しく、`npm run dev`固有の制約
+(HMR注入とワーカーの相性問題)であって、本番相当の配信では問題にならない。
+今後のローカル動作確認は`npm run build && npx vite preview`を使い、初回描画には
+十分な待ち時間を取ること。`npm run dev`でMapLibre関連の変更を確認しようとして
+動かなくても、それだけで実装を疑わない(CLAUDE.md参照)。
 
 ---
 
