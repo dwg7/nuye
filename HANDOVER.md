@@ -1,9 +1,9 @@
 # HANDOVER
 
-## Status as of 2026-09-07
+## Status as of 2026-09-08
 
-Phase 0(調査)〜Phase 4(地形統合)まで完了・実機確認済み。`dwg7/nuye`を立ち上げ、
-GitHub Pagesで公開している。
+Phase 0(調査)〜Phase 4(地形統合、簡易標高断面含む)まで完了・実機確認済み。
+`dwg7/nuye`を立ち上げ、GitHub Pagesで公開している。
 
 - 動作確認済みURL: **https://dwg7.unopengis.org/nuye/**
   (`dwg7.github.io/nuye/`はここへ301リダイレクトされる、DECISIONS.md D7)
@@ -35,6 +35,10 @@ GitHub Pagesで公開している。
 - **地形トグル**: ON/OFF切替、attribution表示("Processed with Mapterhorn")での
   ソース接続確認、ベースマップ切替後も地形ON状態が維持されることを確認
   (DECISIONS.md D12)
+- **簡易標高断面**: サンプルミッションの経路(6.41km)で標高18〜71mを取得、
+  SVGチャートの描画を確認。地形が事前にオフ/オンいずれの状態から呼んでも
+  ほぼ同じ実標高値(誇張なし)が返り、呼び出し後に地形のON/OFF状態が正しく
+  復元されることの両方を確認(DECISIONS.md D13)
 
 ## 未確認の機能
 
