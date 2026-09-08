@@ -92,7 +92,6 @@ const map = new maplibregl.Map({
 map.addControl(new maplibregl.AttributionControl({ compact: true }));
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 map.on('error', (e) => console.error('[nuye] maplibre error', e.error));
-(window as unknown as { __map: unknown }).__map = map;
 
 // ---------------------------------------------------------------------------
 // 地形(hfu/mapterhorn-japan-bridgeを直接参照、DECISIONS.md D3)
@@ -299,19 +298,8 @@ function persist(instance: TerraDraw): void {
 }
 
 map.on('load', () => {
-  console.log('[nuye-debug] load fired');
-  try {
-    setupTerrain();
-    console.log('[nuye-debug] setupTerrain done', !!map.getSource(TERRAIN_SOURCE.id), !!map.getLayer('hillshade'));
-  } catch (err) {
-    console.error('[nuye-debug] setupTerrain threw', err);
-  }
-  try {
-    setupPhotoLayer();
-    console.log('[nuye-debug] setupPhotoLayer done', !!map.getSource(PHOTO_SOURCE.id), !!map.getLayer(PHOTO_SOURCE.id));
-  } catch (err) {
-    console.error('[nuye-debug] setupPhotoLayer threw', err);
-  }
+  setupTerrain();
+  setupPhotoLayer();
   draw = buildDraw(loadFeatures());
   persist(draw);
   renderDrawTools();
@@ -320,7 +308,6 @@ map.on('load', () => {
   renderTerrainToggle();
   renderPhotoToggle();
   renderSaveStatus();
-  console.log('[nuye-debug] load handler complete');
 });
 
 // ---------------------------------------------------------------------------

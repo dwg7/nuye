@@ -39,6 +39,9 @@ Phase 0(調査)〜Phase 4(地形統合、簡易標高断面含む)まで完了�
   SVGチャートの描画を確認。地形が事前にオフ/オンいずれの状態から呼んでも
   ほぼ同じ実標高値(誇張なし)が返り、呼び出し後に地形のON/OFF状態が正しく
   復元されることの両方を確認(DECISIONS.md D13)
+- **空中写真(kitaphoto17)**: [issue #1](https://github.com/dwg7/nuye/issues/1)
+  対応。positron・bvmap-dark両方で、基本の土地被覆色の上・道路や注記の下という
+  意図した位置に実際に表示されることを確認(DECISIONS.md D14)
 
 ## 未確認の機能
 
@@ -94,6 +97,12 @@ status: planned/unconfirmed/in_progress/confirmed/needs_review/completed
    編集ハンドルが視覚的に残って見えることがあった(1回だけ実機で観測、再現手順は
    未確定)。データ自体(属性パネルの内容)は正しく切り替わっていたので実害は
    無いと見ているが、再現すれば見た目の問題として調べる価値がある
+2. **`https://stars.optgeo.org/mapterhorn-japan-bridge`が2026-09-08時点で404を
+   返すようになっている**(それまでは繰り返し200 OKを確認していた)。nuye側の
+   変更とは無関係な外部サービス側の変化。`map.addSource()`はURLの到達可能性を
+   検証しないため、nuyeの地形トグル自体の動作(表示切替・状態復元)には支障が
+   無いが、実際の地形データ(hillshade・3D地形・標高断面)は現状取得できない。
+   stars側の状況を確認するか、上流で復旧を待つ必要がある
 
 ## 壊れやすい箇所
 
