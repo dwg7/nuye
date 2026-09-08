@@ -299,8 +299,19 @@ function persist(instance: TerraDraw): void {
 }
 
 map.on('load', () => {
-  setupTerrain();
-  setupPhotoLayer();
+  console.log('[nuye-debug] load fired');
+  try {
+    setupTerrain();
+    console.log('[nuye-debug] setupTerrain done', !!map.getSource(TERRAIN_SOURCE.id), !!map.getLayer('hillshade'));
+  } catch (err) {
+    console.error('[nuye-debug] setupTerrain threw', err);
+  }
+  try {
+    setupPhotoLayer();
+    console.log('[nuye-debug] setupPhotoLayer done', !!map.getSource(PHOTO_SOURCE.id), !!map.getLayer(PHOTO_SOURCE.id));
+  } catch (err) {
+    console.error('[nuye-debug] setupPhotoLayer threw', err);
+  }
   draw = buildDraw(loadFeatures());
   persist(draw);
   renderDrawTools();
@@ -309,6 +320,7 @@ map.on('load', () => {
   renderTerrainToggle();
   renderPhotoToggle();
   renderSaveStatus();
+  console.log('[nuye-debug] load handler complete');
 });
 
 // ---------------------------------------------------------------------------
