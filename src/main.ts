@@ -92,6 +92,7 @@ const map = new maplibregl.Map({
 map.addControl(new maplibregl.AttributionControl({ compact: true }));
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 map.on('error', (e) => console.error('[nuye] maplibre error', e.error));
+(window as unknown as { __map: unknown }).__map = map;
 
 // ---------------------------------------------------------------------------
 // 地形(hfu/mapterhorn-japan-bridgeを直接参照、DECISIONS.md D3)
