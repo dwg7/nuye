@@ -432,4 +432,24 @@ bvmap-dark: 123層、両方とも`layers[0].id === "background"`)。
 `node_modules`の型定義で`RasterSourceSpecification`の`url`フィールドが
 「TileJSONリソースへのURL」であることを確認し、minzoom/maxzoom/bounds/
 attributionをnuye側で複製せずstars側の定義に委ねられることを確認した。
-実機でのボタン操作・レイヤ位置の見た目確認はこの後行う。
+
+### 訂正(同日)
+
+実機で「写真」ボタンを押したところ、attribution表示("GSI seamlessphoto")で
+ソース接続は確認できたが、**写真が画面上に一切見えなかった**。原因は挿入位置——
+「backgroundの直後」は、その上にすぐpositronの`park`/`water`/`landcover_ice_shelf`/
+`landcover_glacier`/`landuse_residential`/`landcover_wood`(いずれも不透明な塗り、
+positronの場合6枚連続)が重なる位置であり、写真は完全にそれらの下に埋もれて
+見えなくなっていた。
+
+実際の`layers`配列の`type`を全件確認したところ、positron・bvmap-darkとも
+「backgroundの直後、数枚の面塗り(基本の土地被覆・水域等)が連続してから、
+線(道路・河川等)・注記に移る」という共通構造だった(スタイル固有のレイヤーID名は
+違うが、type=fillが連続してからtype=line/symbolに変わるという構造は共通)。
+そこで挿入位置を「先頭の塗り群の直後、最初のline/symbolレイヤーの直前」に修正した
+——`layers.findIndex(l => l.id !== 'background' && (l.type === 'line' || l.type
+=== 'symbol'))`で、スタイル固有のレイヤーID名に依存せず汎用的に求める。これにより、
+広い面積を覆う基本の土地被覆色が写真に置き換わって見え、道路・河川・注記・建物は
+写真の上に残って判読できる状態になった(衛星写真ベースマップの一般的な作法と同じ)。
+
+実機で再確認し、positron・bvmap-dark両方で写真が実際に表示されることを確認した。

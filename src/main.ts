@@ -139,18 +139,25 @@ function toggleTerrain(): void {
 // 写真(GSIシームレス空中写真 kitaphoto17、hfu/stars経由。dwg7/nuye#1)
 //
 // ベースマップ・写真・地形は独立したon/off対象(issue #1の要求どおり)。
-// 写真はベースマップの塗り・道路・注記より下、backgroundレイヤーより上に
-// 挿入する——positron/bvmap-darkいずれも先頭が`background`レイヤーである
-// ことを実際のstyle.jsonで確認済み(DECISIONS.md D14)。地形と同じ理由で、
-// ベースマップ切替のたびに作り直す。
+//
+// 挿入位置は「backgroundの直後」ではなく「先頭の塗り(fill)群の直後、最初の
+// line/symbolレイヤーの直前」にした——実機で確認したところ、backgroundの
+// 直後に挿しただけでは、その上に重なるpark/water/landuse等の不透明な塗りに
+// 完全に覆われて写真が一切見えなかった(DECISIONS.md D14訂正)。
+// positron・bvmap-darkいずれも、backgroundの直後は数枚の面塗り
+// (park/water/landcover*、または行政区画/水域/地形表記面)が続いてから
+// line/symbolに移る、という共通の構造を実際のstyle.jsonで確認した——
+// スタイル固有のレイヤーID名には依存せず、type(fill/line/symbol)だけで
+// 汎用的に位置を決められる。地形と同じ理由で、ベースマップ切替のたびに
+// 作り直す。
 // ---------------------------------------------------------------------------
 
 let photoEnabled = false;
 
 function insertBeforeId(): string | undefined {
   const layers = map.getStyle()?.layers ?? [];
-  const bgIndex = layers.findIndex((l) => l.id === 'background');
-  return layers[bgIndex + 1]?.id;
+  const idx = layers.findIndex((l) => l.id !== 'background' && (l.type === 'line' || l.type === 'symbol'));
+  return idx >= 0 ? layers[idx].id : undefined;
 }
 
 function setupPhotoLayer(): void {
