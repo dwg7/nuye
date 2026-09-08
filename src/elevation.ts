@@ -44,12 +44,20 @@ export function resampleLine(coords: [number, number][], numSamples: number): [n
   return samples;
 }
 
+const IDLE_WAIT_TIMEOUT_MS = 15000;
+
 /**
  * 標高断面を取得する。queryTerrainElevation()は地形が有効な間だけ実値を返す
  * (無効時は常にnull、確認済み——MapLibreの型定義コメント参照)ため、呼び出し中だけ
  * 誇張なし(exaggeration: 1)で地形を有効化し、呼び出し前の状態(オン/オフ・誇張値)へ
  * 復元する。地形が元々オフだった場合は、DEMタイルの読込を待ってから
  * (`map.once('idle')`)問い合わせる——読込前に問い合わせると全点nullになるため。
+ *
+ * `idle`にはタイムアウトを設けている——地形ソースが恒久的に失敗する状況
+ * (例: 2026-09-08に実際に発生した`mapterhorn-japan-bridge`の404)では、
+ * タイルの読込キューが空にならず`idle`が永久に発火しない可能性があり、
+ * それを待ち続けると呼び出し元(UI)が無限に固まってしまう
+ * (2026-09-08、コードレビューで発見)。
  */
 export async function computeElevationProfile(
   map: maplibregl.Map,
@@ -63,7 +71,10 @@ export async function computeElevationProfile(
 
   map.setTerrain({ source: terrainSourceId, exaggeration: 1 });
   if (!wasEnabled) {
-    await new Promise<void>((resolve) => map.once('idle', () => resolve()));
+    await Promise.race([
+      new Promise<void>((resolve) => map.once('idle', () => resolve())),
+      new Promise<void>((resolve) => setTimeout(resolve, IDLE_WAIT_TIMEOUT_MS))
+    ]);
   }
 
   const cumulative = [0];

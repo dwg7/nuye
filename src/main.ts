@@ -282,12 +282,18 @@ const TERRA_DRAW_MODE_BY_GEOMETRY: Record<string, string> = {
 // 標準的な属性ではない)。これが無いと`draw.addFeatures()`の検証で弾かれ、
 // 何も表示されないままサイレントに失敗する(2026-09-07、実機テストで発見・
 // DECISIONS.md参照)。外部GeoJSONを読み込む前に必ずこれを通す。
+//
+// `mode`はgeometry種別から機械的に決まる値なので、必ずspreadの最後に置いて
+// 入力側のpropertiesより優先させる——先に置くと、読み込むファイルが偶然
+// (他ツール由来や壊れたファイルで)`properties.mode`を既に持っていた場合に、
+// そちらが勝ってgeometryと食い違うmode(例: Point×"polygon")になり、
+// addFeatures()に弾かれる原因が分かりにくくなる(2026-09-08、コードレビューで発見)。
 function prepareForTerraDraw(feature: GeoJSON.Feature): GeoJSON.Feature {
   const mode = TERRA_DRAW_MODE_BY_GEOMETRY[feature.geometry.type];
   if (!mode) return feature;
   return {
     ...feature,
-    properties: { mode, ...(feature.properties ?? {}) }
+    properties: { ...(feature.properties ?? {}), mode }
   };
 }
 
@@ -322,6 +328,11 @@ function switchBasemap(id: BasemapId): void {
   map.once('style.load', () => {
     setupTerrain();
     setupPhotoLayer();
+    // 古いインスタンスのアダプタ(mapのcanvasに直接イベントリスナーを持つ)を
+    // 明示的に停止・登録解除してから作り直す。実機テスト(4回連続切替)では
+    // これを呼ばなくても目に見える重複処理は再現しなかったが、リスナーを
+    // 溜め込まないための行儀として呼んでおく(2026-09-08、コードレビューで発見)。
+    draw.stop();
     draw = buildDraw(snapshot);
     renderFeatureList(draw);
     renderBasemapSwitch();
@@ -654,7 +665,13 @@ function buildElevationSection(coords: [number, number][]): HTMLElement {
       const samples = await computeElevationProfile(map, coords, TERRAIN_SOURCE.id);
       renderElevationChart(chart, samples);
     } catch (err) {
-      chart.innerHTML = `<p class="hint">標高の取得に失敗しました: ${(err as Error).message}</p>`;
+      // エラーメッセージは(現状の呼び出し元では起きえないとはいえ)innerHTMLへ
+      // 直接埋め込まず、textContentで安全側に倒す(2026-09-08、コードレビューで発見)。
+      chart.innerHTML = '';
+      const hint = document.createElement('p');
+      hint.className = 'hint';
+      hint.textContent = `標高の取得に失敗しました: ${(err as Error).message}`;
+      chart.appendChild(hint);
     } finally {
       btn.disabled = false;
       btn.textContent = '標高断面を見る';
