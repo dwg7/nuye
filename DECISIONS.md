@@ -376,3 +376,60 @@ LineStringの座標列は、Haversine距離で等間隔に20点へ再標本化(`
 両方で、ほぼ同一の実標高値が返ることを実機で確認した。また、呼び出し後に
 地形のON/OFF状態(ボタンのactiveクラス)が呼び出し前の状態へ正しく復元される
 ことも確認した。
+
+---
+
+## D14: 空中写真(kitaphoto17)を、ベースマップ・地形と独立したレイヤーとして追加
+
+### 背景
+
+[dwg7/nuye#1](https://github.com/dwg7/nuye/issues/1)で、starsがホストしている
+kitaphoto17(GSIシームレス空中写真)の追加が要望された。要求の骨子は3点:
+
+1. ベースマップ・写真・地形は別カテゴリであり、地形と同じく写真もベースマップに
+   独立にon/offできること
+2. ベースマップの適切なレイヤ位置に写真が入るよう留意すること
+3. それはpositronでもbvmap-darkでも同じであること
+
+### 調査
+
+`https://stars.optgeo.org/kitaphoto17`を実際にfetchし、TileJSONとして応答することを
+確認した:
+
+- タイルURL: `https://stars.optgeo.org/kitaphoto17/{z}/{x}/{y}`(jpg、512pxタイル
+  ——実際に1枚ダウンロードしてサイズを確認済み。TileJSON自体には`tileSize`の
+  明記が無いが、MapLibreの`RasterSourceSpecification`のデフォルト値も512で
+  一致する)
+- 出典: 国土地理院シームレス空中写真(GSI seamlessphoto)、CC BY 4.0
+- 範囲: 北海道+北方領土相当のbbox、zoom 2-17
+
+参考実装[`hfu/kitaphoto17-navara`](https://github.com/hfu/kitaphoto17-navara)は
+Navara(`maplibre/navara`)向けで、nuyeが使う素のMapLibre GL JSとは実装が異なる
+ため、URLとタイル仕様の確認のみに使い、コードは参照していない。
+
+レイヤ位置については、positron・bvmap-dark両スタイルの実際のstyle.jsonを取得し、
+いずれも**先頭が`background`レイヤーである**ことを確認した(positron: 50層、
+bvmap-dark: 123層、両方とも`layers[0].id === "background"`)。
+
+### 決定
+
+`background`レイヤーの直後(=塗り・道路・注記より下)に写真のraster layerを
+挿入する。挿入位置はハードコードせず、`map.getStyle().layers`から`background`を
+実行時に探して求める(`insertBeforeId()`)——スタイル固有のレイヤーID
+(`park`や`bvmap-行政区画`等)に依存しない、どちらのベースマップでも同じロジックで
+動く実装にした(issue #1の要求3を満たす)。
+
+地形(D12)と同じ理由——`map.setStyle()`がsource/layerを巻き込んで消す——で、
+ベースマップ切替のたびに`setupPhotoLayer()`を呼び直す設計にした。写真・地形は
+それぞれ独立した`photoEnabled`/`terrainEnabled`のモジュール状態を持ち、
+互いに影響しない(issue #1の要求1)。
+
+トップバーに「写真」トグルボタンを追加した(「地形」ボタンと同じ見た目・
+挙動パターン)。
+
+### 検証
+
+`node_modules`の型定義で`RasterSourceSpecification`の`url`フィールドが
+「TileJSONリソースへのURL」であることを確認し、minzoom/maxzoom/bounds/
+attributionをnuye側で複製せずstars側の定義に委ねられることを確認した。
+実機でのボタン操作・レイヤ位置の見た目確認はこの後行う。

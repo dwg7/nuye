@@ -19,6 +19,16 @@ export const TERRAIN_SOURCE = {
   tileSize: 512
 };
 
+// GSIシームレス空中写真(北海道、CC BY 4.0)。starsのTileJSONを直接fetchして
+// 実在・応答(z2-17、512pxタイル)を確認済み(2026-09-08、DECISIONS.md D14参照)。
+// urlをTileJSONとして渡すことで、minzoom/maxzoom/bounds/attributionはstars側の
+// 定義をそのまま使う(nuye側に複製しない)。
+export const PHOTO_SOURCE = {
+  id: 'kitaphoto17',
+  url: 'https://stars.optgeo.org/kitaphoto17',
+  tileSize: 512
+};
+
 // テスト領域: 札幌駅 〜 月寒中央(起動プロンプト6章)。
 // 中心は両地点の中間点。ズーム12.5は、Web Mercatorのmeters-per-pixel計算で
 // 両地点間の直線距離(約6.3km)が画面幅(デスクトップ想定1020px)のうち約

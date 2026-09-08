@@ -54,10 +54,12 @@ html, body {
   color: #fff;
   border-color: var(--accent);
 }
+#photo-toggle button,
 #terrain-toggle button {
   padding: 4px 10px;
   font-size: 13px;
 }
+#photo-toggle button.active,
 #terrain-toggle button.active {
   background: var(--accent);
   color: #fff;

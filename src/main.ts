@@ -19,7 +19,7 @@ import {
 } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 
-import { BASEMAP_STYLES, DEFAULT_BASEMAP, TERRAIN_SOURCE, TEST_AREA } from './mapSources';
+import { BASEMAP_STYLES, DEFAULT_BASEMAP, TERRAIN_SOURCE, PHOTO_SOURCE, TEST_AREA } from './mapSources';
 import type { BasemapId } from './mapSources';
 import { CATEGORY_LABELS, STATUS_LABELS, defaultProperties } from './schema';
 import type { Category, NuyeProperties, Status } from './schema';
@@ -41,6 +41,7 @@ app.innerHTML = `
   <div id="topbar">
     <div id="brand">Nuye</div>
     <div id="basemap-switch"></div>
+    <div id="photo-toggle"></div>
     <div id="terrain-toggle"></div>
     <div id="save-status"></div>
   </div>
@@ -60,6 +61,7 @@ const ioToolsEl = document.querySelector<HTMLDivElement>('#io-tools')!;
 const featureListEl = document.querySelector<HTMLDivElement>('#feature-list')!;
 const attributePanelEl = document.querySelector<HTMLDivElement>('#attribute-panel')!;
 const basemapSwitchEl = document.querySelector<HTMLDivElement>('#basemap-switch')!;
+const photoToggleEl = document.querySelector<HTMLDivElement>('#photo-toggle')!;
 const terrainToggleEl = document.querySelector<HTMLDivElement>('#terrain-toggle')!;
 const saveStatusEl = document.querySelector<HTMLDivElement>('#save-status')!;
 
@@ -131,6 +133,50 @@ function toggleTerrain(): void {
   terrainEnabled = !terrainEnabled;
   map.setLayoutProperty('hillshade', 'visibility', terrainEnabled ? 'visible' : 'none');
   map.setTerrain(terrainEnabled ? { source: TERRAIN_SOURCE.id, exaggeration: 1.5 } : null);
+}
+
+// ---------------------------------------------------------------------------
+// 写真(GSIシームレス空中写真 kitaphoto17、hfu/stars経由。dwg7/nuye#1)
+//
+// ベースマップ・写真・地形は独立したon/off対象(issue #1の要求どおり)。
+// 写真はベースマップの塗り・道路・注記より下、backgroundレイヤーより上に
+// 挿入する——positron/bvmap-darkいずれも先頭が`background`レイヤーである
+// ことを実際のstyle.jsonで確認済み(DECISIONS.md D14)。地形と同じ理由で、
+// ベースマップ切替のたびに作り直す。
+// ---------------------------------------------------------------------------
+
+let photoEnabled = false;
+
+function insertBeforeId(): string | undefined {
+  const layers = map.getStyle()?.layers ?? [];
+  const bgIndex = layers.findIndex((l) => l.id === 'background');
+  return layers[bgIndex + 1]?.id;
+}
+
+function setupPhotoLayer(): void {
+  if (!map.getSource(PHOTO_SOURCE.id)) {
+    map.addSource(PHOTO_SOURCE.id, {
+      type: 'raster',
+      url: PHOTO_SOURCE.url,
+      tileSize: PHOTO_SOURCE.tileSize
+    });
+  }
+  if (!map.getLayer(PHOTO_SOURCE.id)) {
+    map.addLayer(
+      {
+        id: PHOTO_SOURCE.id,
+        type: 'raster',
+        source: PHOTO_SOURCE.id,
+        layout: { visibility: photoEnabled ? 'visible' : 'none' }
+      },
+      insertBeforeId()
+    );
+  }
+}
+
+function togglePhoto(): void {
+  photoEnabled = !photoEnabled;
+  map.setLayoutProperty(PHOTO_SOURCE.id, 'visibility', photoEnabled ? 'visible' : 'none');
 }
 
 // CSSグリッドレイアウトでは#mapの実サイズがMapLibre初期化時点ではまだ確定して
@@ -246,12 +292,14 @@ function persist(instance: TerraDraw): void {
 
 map.on('load', () => {
   setupTerrain();
+  setupPhotoLayer();
   draw = buildDraw(loadFeatures());
   persist(draw);
   renderDrawTools();
   renderBasemapSwitch();
   renderIOTools();
   renderTerrainToggle();
+  renderPhotoToggle();
   renderSaveStatus();
 });
 
@@ -266,6 +314,7 @@ function switchBasemap(id: BasemapId): void {
   map.setStyle(BASEMAP_STYLES[id]);
   map.once('style.load', () => {
     setupTerrain();
+    setupPhotoLayer();
     draw = buildDraw(snapshot);
     renderFeatureList(draw);
     renderBasemapSwitch();
@@ -295,6 +344,19 @@ function renderTerrainToggle(): void {
     btn.className = terrainEnabled ? 'active' : '';
   });
   terrainToggleEl.appendChild(btn);
+}
+
+function renderPhotoToggle(): void {
+  photoToggleEl.innerHTML = '';
+  const btn = document.createElement('button');
+  btn.textContent = '写真';
+  btn.title = '空中写真の表示切替(GSIシームレス空中写真 kitaphoto17、hfu/stars経由)';
+  btn.className = photoEnabled ? 'active' : '';
+  btn.addEventListener('click', () => {
+    togglePhoto();
+    btn.className = photoEnabled ? 'active' : '';
+  });
+  photoToggleEl.appendChild(btn);
 }
 
 // ---------------------------------------------------------------------------
