@@ -97,12 +97,15 @@ status: planned/unconfirmed/in_progress/confirmed/needs_review/completed
    編集ハンドルが視覚的に残って見えることがあった(1回だけ実機で観測、再現手順は
    未確定)。データ自体(属性パネルの内容)は正しく切り替わっていたので実害は
    無いと見ているが、再現すれば見た目の問題として調べる価値がある
-2. **`https://stars.optgeo.org/mapterhorn-japan-bridge`が2026-09-08時点で404を
-   返すようになっている**(それまでは繰り返し200 OKを確認していた)。nuye側の
-   変更とは無関係な外部サービス側の変化。`map.addSource()`はURLの到達可能性を
-   検証しないため、nuyeの地形トグル自体の動作(表示切替・状態復元)には支障が
-   無いが、実際の地形データ(hillshade・3D地形・標高断面)は現状取得できない。
-   stars側の状況を確認するか、上流で復旧を待つ必要がある
+
+## 解決済み事項(続き2)
+
+- ~~`mapterhorn-japan-bridge`が404を返す~~ → mapterhorn-japan-bridge担当セッションから、
+  D148/D152(elevationアーカイブ再生成)によるdelete-then-transfer中の一時的な
+  挙動だったと連絡があり、2026-09-09 03:02:57 JSTに公開完了。こちら側でも
+  TileJSON・タイル取得(200、有効なwebp画像)を直接確認し、nuye実機でも
+  地形トグル・標高断面(標高17〜71m、障害前の実測値と一致)が正常に動作する
+  ことを確認した
 
 ## 壊れやすい箇所
 
